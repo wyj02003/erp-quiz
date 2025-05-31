@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>收藏題目</title>
+  <script src="questions.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f9f9f9;
+      max-width: 900px;
+      margin: auto;
+      padding: 30px;
+      color: #333;
+    }
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+      margin-bottom: 30px;
+    }
+    .question {
+      background: #fff;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+    .question-title {
+      font-weight: bold;
+      font-size: 18px;
+      color: #34495e;
+      margin-bottom: 10px;
+    }
+    .option {
+      margin: 6px 0;
+    }
+    .answer {
+      margin-top: 10px;
+      font-weight: bold;
+      color: #27ae60;
+    }
+    .back-btn {
+      display: inline-block;
+      background: #3498db;
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 8px;
+      text-decoration: none;
+      margin-bottom: 30px;
+    }
+    .button-container {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 12px;
+    }
+    .favorite-button {
+      background: none;
+      border: none;
+      font-size: 20px;
+      color: #f1c40f;
+      cursor: pointer;
+      transition: transform 0.1s ease;
+    }
+    .favorite-button:hover {
+      transform: scale(1.2);
+    }
+  </style>
+</head>
+<body>
+  <a href="index.html" class="back-btn">← 返回題庫</a>
+  <h1>收藏題目</h1>
+  <div id="favorites-container"></div>
+
+  <script>
+    function renderFavorites() {
+      const favoriteNumbers = Object.keys(localStorage)
+        .filter(k => k.startsWith("fav-") && localStorage.getItem(k) === "true")
+        .map(k => k.replace("fav-", ""));
+
+      const container = document.getElementById("favorites-container");
+      container.innerHTML = "";
+
+      const favQuestions = questions.filter(q => favoriteNumbers.includes(q.number));
+      
+      if (favQuestions.length === 0) {
+        container.innerHTML = "<p style='text-align:center; color:gray;'>目前尚未收藏任何題目。</p>";
+        return;
+      }
+
+      favQuestions.forEach((q, i) => {
+        const div = document.createElement("div");
+        div.className = "question";
+        div.id = `fav-${q.number}`;
+        div.innerHTML = `
+          <div class="question-title">${i + 1}. ${q.question}</div>
+          ${q.options.map((opt, idx) =>
+            `<div class="option">${String.fromCharCode(65 + idx)}. ${opt}</div>`
+          ).join("")}
+          <div class="answer">✅ 正確答案：${q.options[q.answer]}</div>
+          <div class="button-container">
+            <button class="favorite-button" onclick="unfavorite('${q.number}')">取消收藏 ★</button>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function unfavorite(number) {
+      localStorage.removeItem(`fav-${number}`);
+      const elem = document.getElementById(`fav-${number}`);
+      if (elem) elem.remove();
+
+      if (document.querySelectorAll(".question").length === 0) {
+        document.getElementById("favorites-container").innerHTML =
+          "<p style='text-align:center; color:gray;'>目前尚未收藏任何題目。</p>";
+      }
+    }
+
+    window.onload = renderFavorites;
+  </script>
+</body>
+</html>

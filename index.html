@@ -1,0 +1,357 @@
+<!DOCTYPE html> 
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>ERP 題庫練習</title>
+  <style>
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    background: #f2f2f7;
+    color: #333;
+    max-width: 900px;
+    margin: auto;
+    padding: 30px;
+  }
+
+  h1 {
+    text-align: center;
+    color: #2c3e50;
+    margin-bottom: 30px;
+  }
+
+  .question {
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    padding: 20px;
+    margin-bottom: 25px;
+    transition: transform 0.2s ease;
+  }
+
+  .question:hover {
+    transform: scale(1.01);
+  }
+
+  .question p {
+    margin-top: 0;
+    font-weight: bold;
+    font-size: 18px;
+    color: #34495e;
+  }
+
+  label input {
+    margin-right: 8px;
+  }
+
+  .correct {
+    color: #27ae60;
+    font-weight: bold;
+  }
+
+  .incorrect {
+    color: #e74c3c;
+    font-weight: bold;
+  }
+
+  button {
+    background: #3498db;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-size: 15px;
+    cursor: pointer;
+    margin: 5px 5px 10px 0;
+    transition: background 0.2s ease;
+  }
+
+  button:hover {
+    background: #2980b9;
+  }
+
+  .favorite-button {
+    background: none;
+    color: #f1c40f;
+    font-size: 20px;
+    border: none;
+    padding: 5px 0;
+    margin-top: 8px;
+    cursor: pointer;
+    transition: transform 0.1s ease;
+  }
+
+  .favorite-button:hover {
+    transform: scale(1.2);
+  }
+
+  progress {
+    appearance: none;
+    width: 100%;
+    height: 20px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #ddd;
+    margin-top: 8px;
+  }
+
+  progress::-webkit-progress-bar {
+    background-color: #eee;
+  }
+
+  progress::-webkit-progress-value {
+    background-color: #27ae60;
+    transition: width 0.5s;
+  }
+
+  #progress-text {
+    font-size: 14px;
+    color: #555;
+    display: inline-block;
+    margin-top: 5px;
+  }
+
+  #review-container {
+    background: #fff6f6;
+    border: 1px solid #e0c0c0;
+    padding: 20px;
+    border-radius: 12px;
+    margin-top: 40px;
+  }
+
+  .review-question {
+    background: #fff;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-left: 5px solid #e74c3c;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  }
+
+  select, input[type="checkbox"] {
+    margin-right: 10px;
+  }
+
+  #score {
+    font-size: 18px;
+    font-weight: bold;
+    margin-top: 20px;
+    color: #2c3e50;
+  }
+
+</style>
+
+</head>
+<body>
+  <h1>ERP 題庫練習系統</h1>
+
+  <!-- 模組分類與顯示選項 -->
+  <label for="module-select">選擇模組：</label>
+  <select id="module-select" onchange="filterByModule()">
+    <option value="all">全部模組</option>
+  </select>
+
+  <label><input type="checkbox" id="toggleNumber" onchange="renderQuiz()"> 顯示原題號</label>
+  <button onclick="retryWrongQuestions()">只重考錯題</button>
+  <button onclick="retryUnansweredQuestions()">只重考未作答</button>
+  <button onclick="exportWrongQuestions()">匯出錯題</button>
+  <button onclick="window.location.href='favorites.html'">只看收藏題目</button>
+
+  <!-- 做題進度條 -->
+  <div style="margin: 20px 0;">
+    <label>答題進度：</label>
+    <progress id="progress-bar" value="0" max="100"></progress>
+    <span id="progress-text">0 / 0</span>
+  </div>
+
+  <div id="quiz-container"></div>
+  <button onclick="checkAnswers()">提交答案</button>
+  <div id="score"></div>
+
+  <!-- 錯題檢討區塊 -->
+  <div id="review-container">
+    <h2>🔍 錯題檢討</h2>
+    <div id="review-list"></div>
+  </div>
+
+  <script src="questions.js"></script>
+  <script>
+    let allFilteredQuestions = [];
+    let shuffledQuestions = [];
+    let selectedModule = 'all';
+    let wrongQuestions = [];
+    let unansweredQuestions = [];
+    let showingFavoritesOnly = false;
+
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    function getModules() {
+      const modules = new Set();
+      questions.forEach(q => {
+        if (q.module) modules.add(q.module);
+      });
+      return Array.from(modules);
+    }
+
+    function populateModuleFilter() {
+      const moduleSelect = document.getElementById("module-select");
+      getModules().forEach(module => {
+        const opt = document.createElement("option");
+        opt.value = module;
+        opt.innerText = module;
+        moduleSelect.appendChild(opt);
+      });
+    }
+
+    function filterByModule() {
+      showingFavoritesOnly = false;
+      selectedModule = document.getElementById("module-select").value;
+      allFilteredQuestions = selectedModule === 'all' ? questions : questions.filter(q => q.module === selectedModule);
+      shuffledQuestions = shuffle([...allFilteredQuestions]);
+      renderQuiz();
+    }
+
+    function renderQuiz() {
+      const showNumber = document.getElementById("toggleNumber").checked;
+      const container = document.getElementById("quiz-container");
+      container.innerHTML = "";
+      shuffledQuestions.forEach((q, index) => {
+        const div = document.createElement("div");
+        div.className = "question";
+        div.id = `q${index}`;
+        const originalNumber = (showNumber && q.number !== undefined) ? `<span style='font-size: 0.9em; color: gray;'>（原題號：${q.number}）</span><br>` : "";
+        const isFavorite = localStorage.getItem(`fav-${q.number}`) === 'true';
+        const starLabel = isFavorite ? "★ 已收藏" : "☆ 收藏";
+        div.innerHTML = `${originalNumber}<p><strong>${index + 1}. ${q.question}</strong></p>` +
+          q.options.map((opt, i) =>
+            `<label><input type="radio" name="q${index}" value="${i}" onchange="checkImmediate(${index}, ${q.answer})"> ${opt}</label><br>`
+          ).join("") +
+          `<div id="feedback${index}" class="result"></div>` +
+          `<button class="favorite-button" onclick="toggleFavorite('${q.number}', this, ${index})">${starLabel}</button>`;
+        container.appendChild(div);
+      });
+      document.getElementById("review-container").style.display = 'none';
+      document.getElementById("score").innerText = '';
+      updateProgress();
+    }
+
+    function updateProgress() {
+      const total = shuffledQuestions.length;
+      let answered = 0;
+      for (let i = 0; i < total; i++) {
+        if (document.querySelector(`input[name="q${i}"]:checked`)) answered++;
+      }
+      const percent = Math.round((answered / total) * 100);
+      document.getElementById("progress-bar").value = percent;
+      document.getElementById("progress-text").innerText = `${answered} / ${total}`;
+    }
+
+    function checkImmediate(index, correctAnswer) {
+      const selected = document.querySelector(`input[name="q${index}"]:checked`);
+      const feedback = document.getElementById(`feedback${index}`);
+      if (selected && parseInt(selected.value) === correctAnswer) {
+        feedback.innerText = "✔ 正確";
+        feedback.className = "correct";
+      } else {
+        feedback.innerText = "✘ 錯誤";
+        feedback.className = "incorrect";
+      }
+      updateProgress();
+    }
+
+    function checkAnswers() {
+      let correct = 0;
+      wrongQuestions = [];
+      unansweredQuestions = [];
+      const reviewList = document.getElementById("review-list");
+      reviewList.innerHTML = "";
+
+      shuffledQuestions.forEach((q, i) => {
+        const selected = document.querySelector(`input[name="q${i}"]:checked`);
+        const feedback = document.getElementById(`feedback${i}`);
+        if (selected && parseInt(selected.value) === q.answer) {
+          correct++;
+          feedback.innerText = "✔ 正確\n原題答案是：" + q.options[q.answer];
+          feedback.className = "correct";
+        } else {
+          if (!selected) unansweredQuestions.push(q);
+          wrongQuestions.push(q);
+          feedback.innerText = `✘ 錯誤，正確答案是：${q.options[q.answer]}`;
+          feedback.className = "incorrect";
+
+          const reviewDiv = document.createElement("div");
+          reviewDiv.className = "review-question";
+          const userAnswer = selected ? q.options[selected.value] : "<span style='color:red'>未作答</span>";
+          reviewDiv.innerHTML = `<strong>題目：</strong>${q.question}<br>` +
+            (q.number !== undefined ? `<strong>原題號：</strong>${q.number}<br>` : "") +
+            q.options.map((opt, idx) => `<div>${String.fromCharCode(65 + idx)}. ${opt}</div>`).join("") +
+            `<strong>你的答案：</strong>${userAnswer}<br>` +
+            `<strong>正確答案：</strong>${q.options[q.answer]}`;
+          reviewList.appendChild(reviewDiv);
+        }
+      });
+
+      const percent = ((correct / shuffledQuestions.length) * 100).toFixed(1);
+      document.getElementById("score").innerText = `你答對了 ${correct} / ${shuffledQuestions.length} 題（正確率 ${percent}%）`;
+      document.getElementById("review-container").style.display = 'block';
+    }
+
+    function retryWrongQuestions() {
+      if (wrongQuestions.length === 0) {
+        alert("目前沒有錯題可重考。請先提交答案。");
+        return;
+      }
+      shuffledQuestions = [...wrongQuestions];
+      renderQuiz();
+    }
+
+    function retryUnansweredQuestions() {
+      if (unansweredQuestions.length === 0) {
+        alert("目前沒有未作答題目。請先提交答案。");
+        return;
+      }
+      shuffledQuestions = [...unansweredQuestions];
+      renderQuiz();
+    }
+
+    function exportWrongQuestions() {
+      if (wrongQuestions.length === 0) {
+        alert("目前沒有錯題可匯出。請先提交答案。");
+        return;
+      }
+      const content = wrongQuestions.map(q => {
+        return `題目：${q.question}\n選項：\n` +
+          q.options.map((opt, i) => `${String.fromCharCode(65 + i)}. ${opt}`).join("\n") +
+          `\n正解：${q.options[q.answer]}\n`;
+      }).join("\n-------------------\n");
+      const blob = new Blob([content], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "錯題回顧.txt";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function toggleFavorite(number, button, index) {
+      const key = `fav-${number}`;
+      const isNowFavorite = !(localStorage.getItem(key) === 'true');
+      localStorage.setItem(key, isNowFavorite.toString());
+      button.innerText = isNowFavorite ? "★ 已收藏" : "☆ 收藏";
+
+      if (!isNowFavorite && showingFavoritesOnly) {
+        shuffledQuestions.splice(index, 1);
+        renderQuiz();
+      }
+    }
+
+    populateModuleFilter();
+    filterByModule();
+  </script>
+</body>
+</html>
